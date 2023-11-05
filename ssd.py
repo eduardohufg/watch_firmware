@@ -6,6 +6,47 @@ from oled import Write
 from oled.fonts import ubuntu_mono_12 as u12
 from oled.fonts import ubuntu_mono_15 as u15
 from oled.fonts import ubuntu_mono_20 as u20
+import time
+from umqttsimple import MQTTClient
+import ubinascii
+import machine
+import micropython
+import network
+import esp
+esp.osdebug(None)
+import gc
+gc.collect()
+
+
+ssid = '23Cha'
+password = 'familachavez123'
+mqtt_server = '192.168.0.13'
+
+client_id = ubinascii.hexlify(machine.unique_id())
+topic_sub = b'notification'
+topic_pub = b'hello'
+
+last_message = 0
+message_interval = 5
+counter = 0
+
+station = network.WLAN(network.STA_IF)
+
+station.active(True)
+station.connect(ssid, password)
+
+while station.isconnected() == False:
+  pass
+
+print('Connection successful')
+print(station.ifconfig())
+
+
+
+
+
+
+
 
 
 SDA_PIN = 6
@@ -21,6 +62,31 @@ RTC().init((year, month, mday, weekday, hour, minute, second, milisecond))
 write12 = Write(display, u12)
 write15 = Write(display, u15)
 write20 = Write(display, u20)
+
+def sub_cb(topic, msg):
+  print((topic, msg))
+  if topic == b'notification' and msg == b'received':
+    print('ESP received hello message')
+
+def connect_and_subscribe():
+  global client_id, mqtt_server, topic_sub
+  client = MQTTClient(client_id, mqtt_server)
+  client.set_callback(sub_cb)
+  client.connect()
+  client.subscribe(topic_sub)
+  print('Connected to %s MQTT broker, subscribed to %s topic' % (mqtt_server, topic_sub))
+  return client
+
+def restart_and_reconnect():
+  print('Failed to connect to MQTT broker. Reconnecting...')
+  time.sleep(10)
+  machine.reset()
+
+try:
+  client = connect_and_subscribe()
+except OSError as e:
+  restart_and_reconnect()
+
 
 def show_wifi_status(status,x,y):
     wifi = bytearray(b'\x00\x00\x00\x00\x1f\xf0x<\xe3\x8e\x8f\xe2883\x98\x0f\xe0\x0c`\x03\x80\x03\x80\x03\x80\x00\x00\x00\x00')
@@ -212,6 +278,17 @@ def show_date(form, size, x, y):
 
 battery = 0
 while(True):
+    
+    try:
+        client.check_msg()
+        if (time.time() - last_message) > message_interval:
+            msg = b'Hello #%d' % counter
+            print('pub')
+            client.publish(topic_pub, msg)
+            last_message = time.time()
+            counter += 1
+    except OSError as e:
+        restart_and_reconnect()
 
     show_date(0,15,31,2)
     show_hour(0,15,0,17)
