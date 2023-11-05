@@ -13,7 +13,7 @@ SCL_PIN = 7
 
 # using SoftI2C
 i2c = SoftI2C(sda=Pin(SDA_PIN), scl=Pin(SCL_PIN))
-display = ssd1306.SSD1306_I2C(128, 32, i2c)
+display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
 (year, month, mday, weekday, hour, minute, second, milisecond) = RTC().datetime()
 RTC().init((year, month, mday, weekday, hour, minute, second, milisecond))
@@ -65,8 +65,20 @@ def show_battery(bat,x,y):
         fb = framebuf.FrameBuffer(porcentage[4], 25,10, framebuf.MONO_HLSB)
         display.blit(fb,x,y)
         display.show()
-        
-        
+
+
+def frame(status):
+    if status:
+        display.line(0,0,128,0,1)
+        display.line(0,0,0,64,1)
+        display.line(0,63,128,63,1)
+        display.line(127,0,127,63,1)
+    else:
+        display.line(0,0,128,0,0)
+        display.line(0,0,0,64,0)
+        display.line(0,64,128,63,0)
+        display.line(127,0,127,63,0)
+            
 def show_day(form, size, x, y):
     list_day = ['Lun.','Mar.','Mie.','Jue.','Vie.','Sab.','Dom.']
     list_day_tot = ['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo']
@@ -105,8 +117,12 @@ def show_hour(form, size, x, y):
             write.text(list_num[RTC().datetime()[4]], x, y)
             write.text("a.m.", x+39,y)
         elif (RTC().datetime()[4]>12):
-            write.text(str(RTC().datetime()[4]-12), x, y)
-            write.text("p.m.", x+39,y)    
+            if((RTC().datetime()[4]-12)<10):
+                write.text(list_num[RTC().datetime()[4]-12], x, y)
+                write.text("p.m.", x+39,y)
+            else:
+                write.text(str(RTC().datetime()[4]-12), x, y)
+                write.text("p.m.", x+39,y)    
         else:
             write.text(str(RTC().datetime()[4]), x, y)
         write.text(':', x+15, y)
@@ -196,23 +212,24 @@ def show_date(form, size, x, y):
 
 battery = 0
 while(True):
-    show_date(0,15,29,0)
+
+    show_date(0,15,31,2)
     show_hour(0,15,0,17)
     show_day(0,15,0,0)
     
-    show_wifi_status(1,84,0)
+    show_wifi_status(1,83,0)
     
     
     
     battery = 100
-    show_battery(battery,103,2)
+    show_battery(battery,102,0)
     
     time.sleep(1)
     
-    show_wifi_status(0,84,0)
+    show_wifi_status(0,83,0)
     
     battery = 19
     
-    show_battery(battery,103,2)
+    show_battery(battery,102,0)
     
     
